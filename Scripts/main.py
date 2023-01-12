@@ -1,4 +1,4 @@
-from Scripts.analysis import stock_analysis, stock_indicators
+from Scripts.analysis import stock_analysis
 import time
 
 tickers = ["CGC", "VNTR", "DOLE", "ET", "BLCM", "SNDL", "GOOGL", "ALLK", "META", "AMC", "SGML",
