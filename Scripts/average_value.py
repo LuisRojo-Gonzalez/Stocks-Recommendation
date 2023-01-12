@@ -20,19 +20,23 @@ def mean_intrinsic_value(values):
     """
     This function computes a representative number based on different statistic based on a tolerance metric.
     """
-    value, means, ranges = 0, [], 0
-    has_converged = False
     
-    while not has_converged:
-        means, ranges = means_and_std([x for x in values if ~np.isnan(x)])
+    if np.isnan(values).all():
+        return np.nan
+    else:
+        value, means, ranges = 0, [], 0
+        has_converged = False
         
-        if np.isnan(means).all() or np.isnan(means).all():
-            value = np.nan
-        else:
-            if ranges <= 10E-6:
-                has_converged = True
-                value = means[0]
+        while not has_converged:
+            means, ranges = means_and_std([x for x in values if ~np.isnan(x)])
+            
+            if np.isnan(means).all() or np.isnan(means).all():
+                value = np.nan
             else:
-                values = means.copy()
-    
-    return value
+                if ranges <= 10E-6:
+                    has_converged = True
+                    value = means[0]
+                else:
+                    values = means.copy()
+        
+        return value

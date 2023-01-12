@@ -15,34 +15,62 @@ the function as score(ratios(stock))
 def score(stock_ratios):
     
     # initializes the scoring function
-    yes = 0
-    no = 0
+    buy = 0
+    sell = 0
+    indicator = 0 # how many indicators to use
+    incomplete = 0
     
-    if stock_ratios.loc["trailingPER"][0] > stock_ratios.loc["forwardPER"][0]:
-        # print("Earnings are expeted to increase")
-        yes = yes + 1
+    indicator = indicator + 1
+    if not np.isnan(stock_ratios.loc["enterpriseToEbitda"][0]):
+        if stock_ratios.loc["enterpriseToEbitda"][0] < 10:
+            # print("Balance seems to be healthy")
+            buy = buy + 1
+        else:
+            sell = sell + 1
     else:
-        no = no + 1
+        incomplete = incomplete + 1
     
-    if (0 < stock_ratios.loc["pegRatio"][0]) & (stock_ratios.loc["pegRatio"][0] < 1):
-        # print("Company seems to be undervalued in comparison to the future")
-        yes = yes + 1
+    indicator = indicator + 1
+    if not np.isnan(stock_ratios.loc["trailingPER"][0]) and not np.isnan(stock_ratios.loc["forwardPER"][0]):
+        if stock_ratios.loc["trailingPER"][0] > stock_ratios.loc["forwardPER"][0]:
+            # print("Earnings are expeted to increase")
+            buy = buy + 1
+        else:
+            sell = sell + 1
     else:
-        no = no + 1
+        incomplete = incomplete + 1
     
-    if stock_ratios.loc["currentPrice"][0] < stock_ratios.loc["bookValue"][0]:
-        # print("Company seems to be undervalued")
-        yes = yes + 1
+    indicator = indicator + 1
+    if not np.isnan(stock_ratios.loc["pegRatio"][0]):
+        if (0 < stock_ratios.loc["pegRatio"][0]) and (stock_ratios.loc["pegRatio"][0] < 1):
+            # print("Company seems to be undervalued in comparison to the future")
+            buy = buy + 1
+        else:
+            sell = sell + 1
     else:
-        no = no + 1
+        incomplete = incomplete + 1
     
-    if stock_ratios.loc["priceToBook"][0] < 1:
-        # print("Stock seems to be a solid investment currently")
-        yes = yes + 1
+    indicator = indicator + 1
+    if not np.isnan(stock_ratios.loc["currentPrice"][0]) and not np.isnan(stock_ratios.loc["bookValue"][0]):
+        if stock_ratios.loc["currentPrice"][0] < stock_ratios.loc["bookValue"][0]:
+            # print("Company seems to be undervalued")
+            buy = buy + 1
+        else:
+            sell = sell + 1
     else:
-        no = no + 1
+        incomplete = incomplete + 1
+    
+    indicator = indicator + 1
+    if not np.isnan(stock_ratios.loc["priceToBook"][0]):
+        if stock_ratios.loc["priceToBook"][0] < 1:
+            # print("Stock seems to be a solid investment currently")
+            buy = buy + 1
+        else:
+            sell = sell + 1
+    else:
+        incomplete = incomplete + 1
 
-    return yes / (yes + no)
+    return buy / (buy + sell), sell / (buy + sell), incomplete / indicator
 
 def stock_indicators(stock):
     key_indicators = ratios(stock)
@@ -50,13 +78,15 @@ def stock_indicators(stock):
     
     intrinsic_value = mean_intrinsic_value(values)
     margin = security_margin(intrinsic_value, key_indicators)
-    scoring = score(key_indicators)
+    buy, sell, incomplete = score(key_indicators)
     
     result = {'Stock': stock,
               'CurrentPrice': key_indicators.loc["currentPrice"][0],
               'IntrinsicValue': intrinsic_value,
               'SafetyMargin': margin,
-              'BuyScore': scoring}
+              'BuyScore': buy,
+              'SellScore': sell,
+              'IncompleteInformation': incomplete}
     
     return result
 

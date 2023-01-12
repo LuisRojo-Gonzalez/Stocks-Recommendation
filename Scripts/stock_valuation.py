@@ -19,22 +19,32 @@ def GrahamNumber(stock_ratios):
     
     GrahamNumber = np.nan
     
-    if stock_ratios.loc["growth"][0] <= 0.1 and stock_ratios.loc["eps"][0] > 0 and stock_ratios.loc["bookValue"][0] > 0:
-        GrahamNumber = np.sqrt(22.5 * stock_ratios.loc["eps"][0] * stock_ratios.loc["bookValue"][0])
+    if not (np.isnan(stock_ratios.loc["growth"][0]) and np.isnan(stock_ratios.loc["eps"][0]) and np.isnan(stock_ratios.loc["bookValue"][0])):
+        if stock_ratios.loc["growth"][0] <= 0.1 and stock_ratios.loc["eps"][0] > 0 and stock_ratios.loc["bookValue"][0] > 0:
+            GrahamNumber = np.sqrt(22.5 * stock_ratios.loc["eps"][0] * stock_ratios.loc["bookValue"][0])
+        else:
+            GrahamNumber = np.nan 
     
     return GrahamNumber
 
 def GrahamValue(stock_ratios):
-    growth_rate = stock_ratios.loc["growth"][0]
-    # low growth company
-    if growth_rate <= 0:
-        BPE = 8.5
-    else:
-        BPE = 15
-    CG = 2
     
-    value = stock_ratios.loc["eps"][0] * (BPE + CG * growth_rate) * 4.4 / YahooFinancials("^TNX").get_current_price()
-
+    growth_rate = stock_ratios.loc["growth"][0]
+    
+    if not np.isnan(growth_rate):
+    
+        # low growth company
+        if growth_rate <= 0:
+            BPE = 8.5
+        else:
+            BPE = 15
+        
+        CG = 2
+    
+        value = stock_ratios.loc["eps"][0] * (BPE + CG * growth_rate) * 4.4 / YahooFinancials("^TNX").get_current_price()
+    else:
+        value = np.nan
+    
     return value
 
 def FMAValue(stock_ratios):
@@ -43,16 +53,15 @@ def FMAValue(stock_ratios):
     This method computes the financial metric analysis
     """
 
-    value = 0
-    
-    if stock_ratios.loc["growth"][0] > 0:
-        value = stock_ratios.loc["eps"][0] * (1 + stock_ratios.loc["growth"][0]) * stock_ratios.loc["per"][0]
+    growth_rate = stock_ratios.loc["growth"][0]
+    if not np.isnan(growth_rate) and growth_rate > 0 and not np.isnan(stock_ratios.loc["eps"][0]) and not np.isnan(stock_ratios.loc["per"][0]):
+        value = stock_ratios.loc["eps"][0] * (1 + growth_rate) * stock_ratios.loc["per"][0]
     else:
         value = np.nan
     
     return value
 
-# ind = ratios("vntr")
+# ind = ratios("CGC")
 
 # GrahamNumber(ind)
 # GrahamValue(ind)

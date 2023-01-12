@@ -8,36 +8,78 @@ This script contains the way we retrieve key statistics of a certain stock, such
 can be made. In particular, we work with ratios from the balance sheet of the company.
 """
 
-def growth_rate(data):
-    rate = (np.log(data.astype(float)) - np.log(data.astype(float).shift(-1))).dropna().mean()
+def growth_rate(revenue):
+    
+    rate = (np.log(revenue.astype(float)) - np.log(revenue.astype(float).shift(-1))).dropna().mean()
 
     return rate
 
 def ratios(stock):
+    
     stock_data = YahooFinancials(stock)
     
     statistics = pd.DataFrame.from_dict(stock_data.get_key_statistics_data().values()).T
     
     # get key indicators for assessment
-    key_statistics = statistics.loc[["priceToBook", "beta", "bookValue", "trailingEps", "forwardEps", "pegRatio"]]
+    key_statistics = statistics.loc[["priceToBook", "bookValue", "trailingEps", "forwardEps", "pegRatio", "enterpriseToEbitda"]]
+    
+    key_statistics.fillna(np.nan, inplace = True)
     
     key_statistics.loc["currentPrice"] = stock_data.get_current_price()
-    key_statistics.loc["trailingPER"] = key_statistics.loc["currentPrice"] / key_statistics.loc["trailingEps"][0]
-    key_statistics.loc["per"] = stock_data.get_pe_ratio()
-    key_statistics.loc["eps"] = stock_data.get_earnings_per_share()
-    key_statistics.loc["forwardPER"] = key_statistics.loc["currentPrice"] / key_statistics.loc["forwardEps"][0]
+
+    if not (stock_data.get_pe_ratio() is None):
+        key_statistics.loc["per"] = stock_data.get_pe_ratio()
+    else:
+        key_statistics.loc["per"] = np.nan
+    
+    if not (stock_data.get_earnings_per_share() is None):
+        key_statistics.loc["eps"] = stock_data.get_earnings_per_share()
+    else:
+        key_statistics.loc["eps"] = np.nan
 
     # it reports last four statements
     cash_statement = pd.DataFrame()
     income_statement = pd.DataFrame()
     balance_statement = pd.DataFrame()
 
-    for i in range(4):
-        cash_statement[str(date.today().year - i - 1)] = pd.DataFrame.from_dict(list(stock_data.get_financial_stmts('annual', 'cash')["cashflowStatementHistory"].values())[0][i].values()).T
-        income_statement[str(date.today().year - i - 1)] = pd.DataFrame.from_dict(list(stock_data.get_financial_stmts('annual', 'income')["incomeStatementHistory"].values())[0][i].values()).T
-        balance_statement[str(date.today().year - i - 1)] = pd.DataFrame.from_dict(list(stock_data.get_financial_stmts('annual', 'balance')["balanceSheetHistory"].values())[0][i].values()).T
+    cash_statement_aux = list(stock_data.get_financial_stmts('annual', 'cash')["cashflowStatementHistory"].values())[0]
+    if cash_statement_aux is None:
+        cash_statement = pd.DataFrame(data = [np.nan])
+    else:
+        for i in range(len(cash_statement_aux)):
+            cash_statement[str(date.today().year - i - 1)] = pd.DataFrame.from_dict(cash_statement_aux[i].values()).T
+
+    income_statement_aux = list(stock_data.get_financial_stmts('annual', 'income')["incomeStatementHistory"].values())[0]
+    if income_statement_aux is None:
+        income_statement = pd.DataFrame(data = [np.nan])
+    else:
+        # print(stock)
+        for i in range(len(income_statement_aux)):
+            income_statement[str(date.today().year - i - 1)] = pd.DataFrame.from_dict(income_statement_aux[i].values()).T
     
-    key_statistics.loc["growth"] = growth_rate(income_statement.loc["totalRevenue"])
+    balance_statement_aux = list(stock_data.get_financial_stmts('annual', 'balance')["balanceSheetHistory"].values())[0]
+    if balance_statement_aux is None:
+        balance_statement = pd.DataFrame(data = [np.nan])
+    else:
+        for i in range(len(balance_statement_aux)):
+            balance_statement[str(date.today().year - i - 1)] = pd.DataFrame.from_dict(balance_statement_aux[i].values()).T
+    
+    # compute other indicators
+    if not np.isnan(key_statistics.loc["currentPrice"][0]) and not np.isnan(key_statistics.loc["trailingEps"][0]):
+        key_statistics.loc["trailingPER"] = key_statistics.loc["currentPrice"][0] / key_statistics.loc["trailingEps"][0]
+    else:
+        key_statistics.loc["trailingPER"] = np.nan
+        
+    if not np.isnan(key_statistics.loc["currentPrice"][0]) and not np.isnan(key_statistics.loc["forwardEps"][0]):
+        key_statistics.loc["forwardPER"] = key_statistics.loc["currentPrice"] / key_statistics.loc["forwardEps"][0]
+    else:
+        key_statistics.loc["forwardPER"] = np.nan
+    
+    if len(income_statement) > 0 and not pd.isnull(income_statement.loc["totalRevenue"]).any() and not (income_statement.loc["totalRevenue"] <= 0).any():
+        # print(stock)
+        key_statistics.loc["growth"] = growth_rate(income_statement.loc["totalRevenue"])
+    else:
+        key_statistics.loc["growth"] = np.nan
     
     # # compute the free cash flow
     # FreeCashFlow = cash_statement.loc["changeToOperatingActivities"] - cash_statement.loc["capitalExpenditures"]
@@ -46,17 +88,7 @@ def ratios(stock):
     
     return key_statistics
 
-# stock_data = YahooFinancials("aapl")
-
-# # it reports last four statements
-# cash_statement = pd.DataFrame()
-# income_statement = pd.DataFrame()
-# balance_statement = pd.DataFrame()
-
-# for i in range(4):
-#     cash_statement[str(date.today().year - i - 1)] = pd.DataFrame.from_dict(list(stock_data.get_financial_stmts('annual', 'cash')["cashflowStatementHistory"].values())[0][i].values()).T
-#     income_statement[str(date.today().year - i - 1)] = pd.DataFrame.from_dict(list(stock_data.get_financial_stmts('annual', 'income')["incomeStatementHistory"].values())[0][i].values()).T
-#     balance_statement[str(date.today().year - i - 1)] = pd.DataFrame.from_dict(list(stock_data.get_financial_stmts('annual', 'balance')["balanceSheetHistory"].values())[0][i].values()).T
+# ratios("VNTR")
 
 # # company's equity
 # equity = balance_statement.loc["totalAssets"] - balance_statement.loc["totalLiab"]

@@ -23,3 +23,4 @@ def bs_call(S, K, T, r, sigma):
   
 def bs_put(S, K, T, r, sigma):
     return K * exp(-r*T) - S * bs_call(S, K, T, r, sigma)
+
